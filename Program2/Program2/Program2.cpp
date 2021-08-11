@@ -47,9 +47,9 @@ int main(int argc, char* argv[])
 		cout << "Error: wrong arguments!";
 		return 0;
 	}
-	
+	string filename = argv[1];
 	ifstream reader;
-	reader.open(argv[1]);
+	reader.open(filename);
 	if (!reader.is_open()) {
 		cout << "Error: File not found or file open!";
 	}
@@ -73,13 +73,36 @@ int main(int argc, char* argv[])
 		}
 		formantedArray.add(tempArray);
 	}
-	
+	reader.close();
+
+	ofstream bin;
+	bin.open(filename+".bin", ios::binary);
+	int size = formantedArray.getSize();
+	bin.write((char*)&size, sizeof(size));
 	for (int j = 0; j < formantedArray.getSize(); j++) {
+		size = formantedArray.get(j).getSize();
+		bin.write((char*)&size, sizeof(size));
 		for (int i = 0; i < formantedArray.get(j).getSize(); i++) {
-			cout << formantedArray.get(j).get(i) << " ";
+			float toWrite = formantedArray.get(j).get(i);
+			bin.write((char*)&toWrite, sizeof(toWrite));
+		}
+	}
+	bin.close();
+	/*
+	ifstream binReader;
+	binReader.open("output.bin", ios::binary);
+	int totalCount;
+	binReader.read((char*)&totalCount, sizeof(totalCount));
+	for (int j = 0; j < totalCount; j++) {
+		int countInLine;
+		binReader.read((char*)&countInLine, sizeof(countInLine));
+		for (int i = 0; i < countInLine; i++) {
+			float temp;
+			binReader.read((char*)&temp, sizeof(temp));
+			cout << temp << " ";
 		}
 		cout << endl;
 	}
-
+	*/
 }
 
