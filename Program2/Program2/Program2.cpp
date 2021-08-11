@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <fstream>
 #include <string>
+#include <sstream>
 
 using namespace std;
 
@@ -30,9 +31,19 @@ public:
 	}
 };
 
+template<typename T> T convert(string obj) {
+	stringstream temp(obj);
+	T result;
+	if (!(temp >> result)) {
+		exit(0);
+		return NULL;
+	}
+	return result;
+}
+
 int main(int argc, char* argv[])
 {
-	if (argc != 3) {
+	if (argc != 2) {
 		cout << "Error: wrong arguments!";
 		return 0;
 	}
@@ -44,16 +55,31 @@ int main(int argc, char* argv[])
 	}
 	
 	int countLines = 0;
-	DynamicArray<string> arr;
+	DynamicArray<string> unformatedArray;
+	DynamicArray<DynamicArray<float>> formantedArray;
 	string buffer;
 	while (!reader.eof()) {
 		getline(reader,buffer);
-		arr.add(buffer);
+		unformatedArray.add(buffer);
 		countLines++;
 	}
-	for (int i = 0; i < arr.getSize(); i++) {
-		cout << arr.get(i) << endl;
+	for (int i = 0; i < unformatedArray.getSize(); i++) {
+		stringstream tempString;
+		string tempWord = "";
+		tempString << unformatedArray.get(i);
+		DynamicArray<float> tempArray;
+		while (tempString >> tempWord) {
+			tempArray.add(convert<float>(tempWord));
+		}
+		formantedArray.add(tempArray);
 	}
 	
+	for (int j = 0; j < formantedArray.getSize(); j++) {
+		for (int i = 0; i < formantedArray.get(j).getSize(); i++) {
+			cout << formantedArray.get(j).get(i) << " ";
+		}
+		cout << endl;
+	}
+
 }
 
