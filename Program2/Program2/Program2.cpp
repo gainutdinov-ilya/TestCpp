@@ -6,6 +6,8 @@
 
 using namespace std;
 
+
+//класс динамического массива
 template<class T>
 class DynamicArray {
 private:
@@ -31,6 +33,7 @@ public:
 	}
 };
 
+//функция для конверации строки в требуемый тип
 template<typename T> T convert(string obj) {
 	stringstream temp(obj);
 	T result;
@@ -41,68 +44,89 @@ template<typename T> T convert(string obj) {
 	return result;
 }
 
+bool isTrueFloat(string obj) {
+	if (convert<float>(obj) > convert<int>(obj)) return true;
+	return false;
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc != 2) {
 		cout << "Error: wrong arguments!";
 		return 0;
 	}
+
 	string filename = argv[1];
 	ifstream reader;
 	reader.open(filename);
 	if (!reader.is_open()) {
 		cout << "Error: File not found or file open!";
 	}
-	
-	int countLines = 0;
-	DynamicArray<string> unformatedArray;
+
 	DynamicArray<DynamicArray<float>> formantedArray;
-	string buffer;
+
+	string line, num;
+
 	while (!reader.eof()) {
-		getline(reader,buffer);
-		unformatedArray.add(buffer);
-		countLines++;
-	}
-	for (int i = 0; i < unformatedArray.getSize(); i++) {
-		stringstream tempString;
-		string tempWord = "";
-		tempString << unformatedArray.get(i);
+		getline(reader, line);
+		stringstream buffer;
+		buffer << line;
 		DynamicArray<float> tempArray;
-		while (tempString >> tempWord) {
-			tempArray.add(convert<float>(tempWord));
+		while (buffer >> num) {
+			tempArray.add(convert<float>(num));
 		}
 		formantedArray.add(tempArray);
 	}
 	reader.close();
 
-	ofstream bin;
-	bin.open(filename+".bin", ios::binary);
-	int size = formantedArray.getSize();
-	bin.write((char*)&size, sizeof(size));
+	int lineSize;
+
+	ofstream writer;
+	string objString;
+	bool isFloat;
+	float float_;
+	int int_;
+	writer.open(filename + ".bin", ios::binary);
 	for (int j = 0; j < formantedArray.getSize(); j++) {
-		size = formantedArray.get(j).getSize();
-		bin.write((char*)&size, sizeof(size));
-		for (int i = 0; i < formantedArray.get(j).getSize(); i++) {
-			float toWrite = formantedArray.get(j).get(i);
-			bin.write((char*)&toWrite, sizeof(toWrite));
+		lineSize = formantedArray.get(j).getSize();
+		writer.write((char*)&lineSize, sizeof(lineSize));
+		for (int i = 0; i < lineSize; i++) {
+			stringstream temp;
+			temp << formantedArray.get(j).get(i);
+			temp >> objString;
+			isFloat = formantedArray.get(j).get(i);
+			if (isFloat) {
+				writer.write((char*)&isFloat, sizeof(isFloat));
+				float_ = convert<float>(objString);
+				writer.write((char*)&float_, sizeof(float_));
+			}
+			else {
+				writer.write((char*)&isFloat, sizeof(isFloat));
+				int_ = convert<int>(objString);
+				writer.write((char*)&float_, sizeof(int_));
+			}
 		}
 	}
-	bin.close();
-	/*
-	ifstream binReader;
-	binReader.open("output.bin", ios::binary);
-	int totalCount;
-	binReader.read((char*)&totalCount, sizeof(totalCount));
-	for (int j = 0; j < totalCount; j++) {
-		int countInLine;
-		binReader.read((char*)&countInLine, sizeof(countInLine));
-		for (int i = 0; i < countInLine; i++) {
-			float temp;
-			binReader.read((char*)&temp, sizeof(temp));
-			cout << temp << " ";
+	writer.close();
+/*
+	int inLine;
+	bool type;
+
+
+	reader.open(filename + ".bin", ios::binary);
+	while (reader.read((char*)&inLine, sizeof(inLine))) {
+		for (int i = 0; i < inLine; i++) {
+			reader.read((char*)&type, sizeof(type));
+			if (type) {
+				reader.read((char*)&float_, sizeof(float_));
+				cout << float_ << " ";
+			}
+			else {
+				reader.read((char*)&int_, sizeof(int_));
+				cout << int_ << " ";
+			}
 		}
 		cout << endl;
 	}
-	*/
+*/
 }
-
