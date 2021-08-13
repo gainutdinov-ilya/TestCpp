@@ -30,20 +30,39 @@ int main(int argc, char* argv[])
 	}
 	else {
 		cout << "Error: Wrong arguments";
+		return 0;
 	}
 
-	ifstream binReader;
-	binReader.open(filename, ios::binary);
-	int totalCount;
-	binReader.read((char*)&totalCount, sizeof(totalCount));
-	for (int j = 0; j < totalCount; j++) {
-		int countInLine;
-		binReader.read((char*)&countInLine, sizeof(countInLine));
-		for (int i = 0; i < countInLine; i++) {
-			float temp;
-			binReader.read((char*)&temp, sizeof(temp));
-			cout << setprecision(t1 + t2 * abs(temp)) << temp << " " << t1 + t2 * abs(temp) << " ";
+
+	ifstream reader;
+	__int8  type;
+	__int8 inLine;
+	float float_;
+	int int_;
+	double double_;
+	reader.open(filename, ios::binary);
+	while (reader.read((char*)&inLine, sizeof(inLine))) {
+		for (int i = 0; i < inLine; i++) {
+			reader.read((char*)&type, sizeof(type));
+			switch (type)
+			{
+			case 1:
+				reader.read((char*)&int_, sizeof(int_));
+				cout << int_ << " ";
+				break;
+			case 2:
+				reader.read((char*)&float_, sizeof(float_));
+				cout  << setprecision(7)<< float_ << " ";
+				break;
+			case 3:
+				reader.read((char*)&double_, sizeof(double_));
+				cout << setprecision(16) << double_ << " ";
+				break;
+			default:
+				break;
+			}
 		}
 		cout << endl;
 	}
+
 }
