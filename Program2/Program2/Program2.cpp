@@ -3,6 +3,8 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <iomanip>
+#include <cmath>
 
 using namespace std;
 
@@ -33,6 +35,18 @@ public:
 	}
 };
 
+class BlockElement {
+public:
+	int type;
+	string element;
+	void setType(int t) {
+		type = t;
+	}
+	void setElement(string e) {
+		element = e;
+	}
+};
+
 //функция для конверации строки в требуемый тип
 template<typename T> T convert(string obj) {
 	stringstream temp(obj);
@@ -41,17 +55,31 @@ template<typename T> T convert(string obj) {
 		exit(0);
 		return NULL;
 	}
+
 	return result;
 }
 
-bool isFloat(string obj) {
-	if (fabs(convert<float>(obj)) > fabs(convert<int>(obj))) return true;
-	return false;
+int afterComma(string num) {
+	stringstream ss;
+	ss << setprecision(15) << num;
+	string strNum = ss.str();
+	size_t pos = strNum.find('.');
+	if (pos != strNum.npos) {
+		return strNum.size() - 1 - pos;
+	}
+	else {
+		return 0;
+	}
 }
 
-bool isDouble(string obj) {
-	if (fabs(convert<double>(obj)) > fabs(convert<float>(obj))) return true;
-	return false;
+int getType(string number) {
+	if (afterComma(number) > 0) {
+		if (afterComma(number) > 7) {
+			return 3;
+		}
+		return 2;
+	}
+	return 1;
 }
 
 int main(int argc, char* argv[])
@@ -66,47 +94,119 @@ int main(int argc, char* argv[])
 	ifstream reader(filename);
 	ofstream writer(filename + ".bin", ios::binary);
 	if (!reader.is_open()) {
+
 		cout << "Error: File not found or file open!";
 		return 0;
 	}
+	DynamicArray<DynamicArray<BlockElement>> unformatedArray;
 	while (!reader.eof()) {
 		getline(reader, line);
 		stringstream temp;
 		string num;
 		temp << line;
-		DynamicArray<string> buff;
+		DynamicArray<BlockElement> tempArray;
 		while (temp >> num) {
-			buff.add(num);
+			int type = getType(num);
+			BlockElement element;
+			element.setElement(num);
+			element.setType(type);
+
+			tempArray.add(element);
 		}
-		
-		__int8 size = buff.getSize();
-		writer.write((char*)&size, sizeof(size));
-		for (int i = 0; i < buff.getSize(); i++) {
-			if (isFloat(buff.get(i)) || isDouble(buff.get(i))) {
-				if (isDouble(buff.get(i))) {
-					cout << "double: " << buff.get(i) << endl;
-					double toWrite = convert<double>(buff.get(i));
-					__int8 type = 3;
-					writer.write((char*)&type, sizeof(type));
-					writer.write((char*)&toWrite, sizeof(toWrite));
+		unformatedArray.add(tempArray);
+	}
+	reader.close();
+
+
+
+	DynamicArray<DynamicArray<DynamicArray<BlockElement>>> formatedArray;
+	for (int i = 0; i < unformatedArray.getSize();	i++) {
+		int countBlocks = 0;
+		int last_type = 0;
+		DynamicArray<DynamicArray<BlockElement>> line;
+		DynamicArray<BlockElement> block;
+		for (int k = 0; k < unformatedArray.get(i).getSize(); k ++) {
+			int type = unformatedArray.get(i).get(k).type;
+			BlockElement element;
+			element.setElement(unformatedArray.get(i).get(k).element);
+			element.setType(type);
+			if (k + 1 ==  unformatedArray.get(i).getSize()) {
+				if (last_type == type) {
+					block.add(element);
+					line.add(block);
+					break;
 				}
 				else {
-					cout << "float: " << buff.get(i) << endl;
-					float toWrite = convert<float>(buff.get(i));
-					__int8 type = 2;
-					writer.write((char*)&type, sizeof(type));
-					writer.write((char*)&toWrite, sizeof(toWrite));
+					line.add(block);
+					DynamicArray<BlockElement> new_;
+					block = new_;
+					block.add(element);
+					line.add(block);
+					break;
 				}
 			}
+			if (last_type == type) {
+				block.add(element);
+			}
 			else {
-				cout << "int: " << buff.get(i) << endl;
-				int toWrite = convert<int>(buff.get(i));
-				__int8 type = 1;
-				writer.write((char*)&type, sizeof(type));
-				writer.write((char*)&toWrite, sizeof(toWrite));
+				line.add(block);
+				DynamicArray<BlockElement> new_;
+				block = new_;
+				block.add(element);
 			}
 
+			last_type = type;
 		}
-		
+		formatedArray.add(line);
+	}
+
+	for (int l = 0; l < formatedArray.getSize(); l++) {
+		cout << "Line: "<< l + 1 << "  BLOCKS: " << formatedArray.get(l).getSize()-1 << " ";
+		for (int f = 0; f < formatedArray.get(l).getSize(); f++) {
+			for (int k = 0; k < formatedArray.get(l).get(f).getSize(); k++) {
+				if (k == 0) cout << "{ B SIZE:" << formatedArray.get(l).get(f).getSize() << (formatedArray.get(l).get(f).get(k).type == 1 ? " TYPE INT [ " : formatedArray.get(l).get(f).get(k).type == 2 ? " TYPE FLOAT [ " : " TYPE DOUBLE [ ");
+				cout << formatedArray.get(l).get(f).get(k).element << " ";
+			}
+			if (f != 0) cout << "] ";
+		}
+		cout << endl;
 	}
 }
+
+
+/*
+switch (type)
+	{
+	case 3:
+		cout << " " << setprecision(15) << convert<double>(unformatedArray.get(i).get(k).element);
+
+		element.setElement(unformatedArray.get(i).get(k).element);
+		element.setType(type);
+		break;
+	case 2:
+		cout << " " << setprecision(6) << convert<float>(unformatedArray.get(i).get(k).element);
+		element.setElement(unformatedArray.get(i).get(k).element);
+		element.setType(type);
+		break;
+	default:
+		cout << " " << convert<int>(unformatedArray.get(i).get(k).element);
+		element.setElement(unformatedArray.get(i).get(k).element);
+		element.setType(type);
+		break;
+	}
+}
+else {
+	switch (type)
+	{
+	case 3:
+		cout << endl << "Double: " << setprecision(15) << convert<double>(unformatedArray.get(i).get(k).element);
+		break;
+	case 2:
+		cout << endl << "Float: " << setprecision(6) << convert<float>(unformatedArray.get(i).get(k).element);
+		break;
+	default:
+		cout << endl << "Int: " << convert<int>(unformatedArray.get(i).get(k).element);
+		break;
+	}
+}
+*/
