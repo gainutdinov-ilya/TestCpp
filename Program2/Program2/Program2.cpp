@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+#include <bitset>
 
 using namespace std;
 
@@ -35,6 +36,7 @@ public:
 	}
 };
 
+//клас для шаблонизации блоков и маркеров
 class BlockElement {
 public:
 	int type;
@@ -59,6 +61,7 @@ template<typename T> T convert(string obj) {
 	return result;
 }
 
+//используется для определения типа числа
 int afterComma(string num) {
 	stringstream ss;
 	ss << setprecision(15) << num;
@@ -72,6 +75,7 @@ int afterComma(string num) {
 	}
 }
 
+//используется для определения типа числа
 int getType(string number) {
 	if (afterComma(number) > 0) {
 		if (afterComma(number) > 7) {
@@ -82,6 +86,40 @@ int getType(string number) {
 	return 1;
 }
 
+//записывает кол-во блоков в записи
+void writeLineSize(ofstream& writer, int data) {
+	bitset<8> lineSize(data);
+	writer.write((char*)&lineSize, sizeof(lineSize));
+}
+
+//записывает информацию о блоке
+void writeBlockInfo(ofstream& writer, int size, int type) {
+	bitset<4> blockSize(size);
+	bitset<4> blockType(type);
+	writer.write((char*)&blockSize, sizeof(blockSize));
+	writer.write((char*)&blockType, sizeof(blockType));
+}
+
+void writeNum(ofstream& writer, string number, int type) {
+	int int_;
+	double double_;
+	float float_;
+	switch (type)
+	{
+	case 3:
+		double_ = convert<double>(number);
+		writer.write((char*)&double_, sizeof(double_));
+		break;
+	case 2:
+		float_ = convert<float>(number);
+		writer.write((char*)&float_, sizeof(float_));
+		break;
+	default:
+		int_ = convert<int>(number);
+		writer.write((char*)&int_, sizeof(int_));
+		break;
+	}
+}
 int main(int argc, char* argv[])
 {
 	if (argc != 2) {
@@ -92,7 +130,7 @@ int main(int argc, char* argv[])
 	string filename = argv[1];
 	string line;
 	ifstream reader(filename);
-	ofstream writer(filename + ".bin", ios::binary);
+
 	if (!reader.is_open()) {
 
 		cout << "Error: File not found or file open!";
@@ -116,8 +154,6 @@ int main(int argc, char* argv[])
 		unformatedArray.add(tempArray);
 	}
 	reader.close();
-
-
 
 	DynamicArray<DynamicArray<DynamicArray<BlockElement>>> formatedArray;
 	for (int i = 0; i < unformatedArray.getSize();	i++) {
@@ -160,11 +196,18 @@ int main(int argc, char* argv[])
 		formatedArray.add(line);
 	}
 
+	ofstream writer(filename + ".bin", ios::binary);
 	for (int l = 0; l < formatedArray.getSize(); l++) {
 		cout << "Line: "<< l + 1 << "  BLOCKS: " << formatedArray.get(l).getSize()-1 << " ";
+		writeLineSize(writer, formatedArray.get(l).getSize() - 1);
 		for (int f = 0; f < formatedArray.get(l).getSize(); f++) {
+			
 			for (int k = 0; k < formatedArray.get(l).get(f).getSize(); k++) {
-				if (k == 0) cout << "{ B SIZE:" << formatedArray.get(l).get(f).getSize() << (formatedArray.get(l).get(f).get(k).type == 1 ? " TYPE INT [ " : formatedArray.get(l).get(f).get(k).type == 2 ? " TYPE FLOAT [ " : " TYPE DOUBLE [ ");
+				if (k == 0) {
+					cout << "{ B SIZE:" << formatedArray.get(l).get(f).getSize() << (formatedArray.get(l).get(f).get(k).type == 1 ? " TYPE INT [ " : formatedArray.get(l).get(f).get(k).type == 2 ? " TYPE FLOAT [ " : " TYPE DOUBLE [ ");
+					writeBlockInfo(writer, formatedArray.get(l).get(f).getSize(), formatedArray.get(l).get(f).get(k).type);
+				}
+				writeNum(writer, formatedArray.get(l).get(f).get(k).element, formatedArray.get(l).get(f).get(k).type);
 				cout << formatedArray.get(l).get(f).get(k).element << " ";
 			}
 			if (f != 0) cout << "] ";
