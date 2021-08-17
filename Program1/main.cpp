@@ -46,11 +46,36 @@ bool isTrueFloat(char* obj) {
 	return false;
 }
 
+int afterComma(string num) {
+	stringstream ss;
+	ss << setprecision(15) << num;
+	string strNum = ss.str();
+	size_t pos = strNum.find('.');
+	if (pos != strNum.npos) {
+		return strNum.size() - 1 - pos;
+	}
+	else {
+		return 0;
+	}
+}
+
+//используется для определения типа числа
+int getType(string number) {
+	if (afterComma(number) > 0) {
+		if (afterComma(number) > 7) {
+			return 3;
+		}
+		return 2;
+	}
+	return 1;
+}
+
 int main(int argc, char *argv[]) {
 	if (argc != 8) {
 		cout << "Error: wrong number of arguments! \nRequired: 7\nCurrent: " << argc - 1;
 		return -1;
 	}
+	bool allowDouble = false;
 	string File = convert<string>(argv[1]);
 	int CountLines = convert<int>(argv[2]);
 	int MinNumbersInLine = convert< int>(argv[3]);
@@ -58,6 +83,12 @@ int main(int argc, char *argv[]) {
 	double MaxNumber = convert<double>(argv[6]);
 	double MinNumber = convert<double>(argv[5]);
 	int PercentWholeNumbers = convert<int>(argv[7]);
+
+
+	if (getType(argv[6]) == 3 || getType(argv[5]) == 3) {
+		allowDouble = true;
+	}
+	cout << "Allow double = " << allowDouble << endl;
 	ofstream file;
 	file.open(File);
 	for (int l = 0; l < CountLines; l++) {
@@ -71,10 +102,11 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < countInLine; i++) {
 			if (!numbers[i]) file << setprecision(0) << getRandomNumber<int>(MinNumber, MaxNumber) << " ";
 			else {
-				if (getRandomNumber(1,100) > 50) {
-					file << setprecision(8) << getRandomNumber<float>(MinNumber, MaxNumber) << " ";
+				if (getRandomNumber(1,100) > 50 && allowDouble) {
+					file << setprecision(16) << getRandomNumber<double>(MinNumber, MaxNumber) << " ";
+					
 				}
-				else file << setprecision(17) << getRandomNumber<double>(MinNumber, MaxNumber) << " ";
+				else file << setprecision(5) << getRandomNumber<float>(MinNumber, MaxNumber) << " ";
 			}
 		}
 		if (l + 1 < CountLines) {

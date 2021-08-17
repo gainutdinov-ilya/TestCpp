@@ -9,29 +9,31 @@
 
 using namespace std;
 
-
 //класс динамического массива
 template<class T>
 class DynamicArray {
 private:
-	int size = 0;
+	size_t size = 0;
 	T* arr = new T[size];
 public:
 	void add(T obj) {
 		int oldSize = size;
 		T* temp = new T[size];
 		swap(temp, arr);
+		if(size != 0) delete[] arr;
 		size++;
 		arr = new T[size];
 		for (int i = 0; i < oldSize; i++) {
 			arr[i] = temp[i];
 		}
+		delete[] temp;
 		arr[oldSize] = obj;
+		
 	}
 	T get(int id) {
 		return arr[id];
 	}
-	int getSize() {
+	size_t getSize() {
 		return size;
 	}
 };
@@ -88,16 +90,32 @@ int getType(string number) {
 
 //записывает кол-во блоков в записи
 void writeLineSize(ofstream& writer, int data) {
-	bitset<8> lineSize(data);
-	writer.write((char*)&lineSize, sizeof(lineSize));
+	if (data > 255) {
+		int temp = 255;
+		bitset<8> lineSize1(temp);
+		writer.write((char*)&lineSize1, sizeof(lineSize1));
+		//cout << "\nwrite " << temp << endl;
+		temp = data - 255;
+		bitset<8> lineSize2(temp);
+		//cout << "write " << lineSize2.to_ulong() << endl;
+		writer.write((char*)&lineSize2, sizeof(lineSize2));
+	}
+	else {
+		bitset<8> lineSize(data);
+		writer.write((char*)&lineSize, sizeof(lineSize));
+	}
+
 }
 
 //записывает информацию о блоке
 void writeBlockInfo(ofstream& writer, int size, int type) {
-	bitset<4> blockSize(size);
+	bitset<8> blockSize(size);
 	bitset<4> blockType(type);
+	blockSize = blockSize << 4;
+	for (int i = 0; i < 4; i++) {
+		blockSize[i] = blockType[i];
+	}
 	writer.write((char*)&blockSize, sizeof(blockSize));
-	writer.write((char*)&blockType, sizeof(blockType));
 }
 
 void writeNum(ofstream& writer, string number, int type) {
@@ -120,6 +138,7 @@ void writeNum(ofstream& writer, string number, int type) {
 		break;
 	}
 }
+
 int main(int argc, char* argv[])
 {
 	if (argc != 2) {
@@ -132,13 +151,13 @@ int main(int argc, char* argv[])
 	ifstream reader(filename);
 
 	if (!reader.is_open()) {
-
 		cout << "Error: File not found or file open!";
 		return 0;
 	}
 	DynamicArray<DynamicArray<BlockElement>> unformatedArray;
 	while (!reader.eof()) {
 		getline(reader, line);
+		DynamicArray<string> arrLine;
 		stringstream temp;
 		string num;
 		temp << line;
@@ -148,12 +167,12 @@ int main(int argc, char* argv[])
 			BlockElement element;
 			element.setElement(num);
 			element.setType(type);
-
 			tempArray.add(element);
 		}
 		unformatedArray.add(tempArray);
 	}
 	reader.close();
+
 
 	DynamicArray<DynamicArray<DynamicArray<BlockElement>>> formatedArray;
 	for (int i = 0; i < unformatedArray.getSize();	i++) {
@@ -166,6 +185,14 @@ int main(int argc, char* argv[])
 			BlockElement element;
 			element.setElement(unformatedArray.get(i).get(k).element);
 			element.setType(type);
+			
+			if (block.getSize() == 15) {
+				line.add(block);
+				DynamicArray<BlockElement> new_;
+				block = new_;
+				block.add(element);
+			}
+			
 			if (k + 1 ==  unformatedArray.get(i).getSize()) {
 				if (last_type == type) {
 					block.add(element);
@@ -201,11 +228,12 @@ int main(int argc, char* argv[])
 		cout << "Line: "<< l + 1 << "  BLOCKS: " << formatedArray.get(l).getSize()-1 << " ";
 		writeLineSize(writer, formatedArray.get(l).getSize() - 1);
 		for (int f = 0; f < formatedArray.get(l).getSize(); f++) {
-			
 			for (int k = 0; k < formatedArray.get(l).get(f).getSize(); k++) {
 				if (k == 0) {
-					cout << "{ B SIZE:" << formatedArray.get(l).get(f).getSize() << (formatedArray.get(l).get(f).get(k).type == 1 ? " TYPE INT [ " : formatedArray.get(l).get(f).get(k).type == 2 ? " TYPE FLOAT [ " : " TYPE DOUBLE [ ");
-					writeBlockInfo(writer, formatedArray.get(l).get(f).getSize(), formatedArray.get(l).get(f).get(k).type);
+					cout << "\n\t{ B SIZE:" << formatedArray.get(l).get(f).getSize() << (formatedArray.get(l).get(f).get(k).type == 1 ? " TYPE INT [ " : formatedArray.get(l).get(f).get(k).type == 2 ? " TYPE FLOAT [ " : " TYPE DOUBLE [ ");
+					int blockSize = formatedArray.get(l).get(f).getSize();
+					int blockType = formatedArray.get(l).get(f).get(k).type;
+					writeBlockInfo(writer, blockSize, blockType);
 				}
 				writeNum(writer, formatedArray.get(l).get(f).get(k).element, formatedArray.get(l).get(f).get(k).type);
 				cout << formatedArray.get(l).get(f).get(k).element << " ";

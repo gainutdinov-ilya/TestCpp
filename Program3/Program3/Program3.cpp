@@ -17,8 +17,21 @@ template<typename T> T convert(string obj) {
 	return result;
 }
 
-void getLineInfo(ifstream& reader, _int8& size) {
-	reader.read((char*)&size, sizeof(size));
+void readBlockInfo(ifstream& reader, int &size, int &type) {
+	bitset<8> blockSize;
+	bitset<4> blockType;
+	reader.read((char*)&blockSize, sizeof(blockSize));
+	for (int i = 0; i < 4; i++) {
+		 blockType[i] = blockSize[i];
+		 blockSize[i] = 0;
+	}
+	for (int i = 0; i < 4; i++) {
+		blockSize[i] = blockSize[i+4];
+		blockSize[i+4] = 0;
+	}
+	size = blockSize.to_ulong();
+	type = blockType.to_ulong();
+
 }
 
 int main(int argc, char* argv[])
@@ -40,22 +53,30 @@ int main(int argc, char* argv[])
 
 
 	ifstream reader;
-	__int8  type = 0;
-	bitset<8> lineSize;
-	float float_;
-	int int_;
-	double double_;
+	bitset<8> lineSizeBuffer;
+	int lineSize = 0, line = 0;
 	reader.open(filename, ios::binary);
-	while (reader.read((char*)&lineSize, sizeof(lineSize))) {
-		cout << "Block size: " << lineSize.to_ulong() << " " << endl;
-		_int8 size = lineSize.to_ulong();
-		bitset<4> blockSize;
-		bitset<4> blockType;
-		for (int j = 0; j < lineSize.to_ulong(); j++) {
-			reader.read((char*)&blockSize, sizeof(blockSize));
-			reader.read((char*)&blockType, sizeof(blockType));
-			for (int i = 0; i < blockSize.to_ulong(); i++) {
-				switch (type)
+	while (reader.read((char*)&lineSizeBuffer, sizeof(lineSizeBuffer))) {
+		line++;
+		lineSize = 0;
+		if (lineSizeBuffer.to_ulong() == 255) {
+			lineSize += lineSizeBuffer.to_ulong();
+			reader.read((char*)&lineSizeBuffer, sizeof(lineSizeBuffer));
+			lineSize += lineSizeBuffer.to_ulong();
+		}
+		else {
+			lineSize += lineSizeBuffer.to_ulong();
+		}
+		cout << "LINE: " << line << " BLOCKS: " << lineSize;
+		for (int j = 0; j < lineSize; j++) {
+			int blockType, blockSize;
+			readBlockInfo(reader, blockSize, blockType);
+			double double_;
+			int int_;
+			float float_;
+			cout << "\n\tBLOCK SIZE: " << blockSize << (blockType == 1 ? " TYPE INT [ " : blockType == 2 ? " TYPE FLOAT [ " : " TYPE DOUBLE [ ");
+			for (int i = 0; i < blockSize; i++) {
+				switch (blockType)
 				{
 				case 3:
 					reader.read((char*)&double_, sizeof(double_));
@@ -71,8 +92,9 @@ int main(int argc, char* argv[])
 					break;
 				}
 			}
-			cout << endl;
+			cout << "]";
 		}
+		cout << endl;
 	}
 
 }
@@ -86,8 +108,8 @@ void writeLineSize(ofstream& writer, int data) {
 
 //записывает информацию о блоке
 void writeBlockInfo(ofstream& writer, int size, int type) {
-	bitset<4> blockSize(size);
-	bitset<4> blockType(type);
+	bitset<4> blockSizeBits(size);
+	bitset<4> blockTypeBits(type);
 }
 
 void writeNum(ofstream& writer, string number, int type) {
