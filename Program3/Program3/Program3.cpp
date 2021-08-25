@@ -34,14 +34,27 @@ void readBlockInfo(ifstream& reader, int &size, int &type) {
 
 }
 
+int afterComma(string num) {
+	stringstream ss;
+	ss << setprecision(15) << num;
+	string strNum = ss.str();
+	size_t pos = strNum.find('.');
+	if (pos != strNum.npos) {
+		return strNum.size() - 1 - pos;
+	}
+	else {
+		return 0;
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	string filename;
-	float t1 = 0.1, t2 = 0.001;
-	if (argc == 3) {
+	float t1 = 1, t2 = 1;
+	if (argc == 4) {
 		filename = convert<string>(argv[1]);
-		t1 = convert<float>(argv[2]);
-		t2 = convert<float>(argv[3]);
+		for (int i = 0; i < afterComma(argv[2]); i++) t1 *= 10;
+		for (int i = 0; i < afterComma(argv[3]); i++) t2 *= 10;
 	}
 	else if (argc == 2) {
 		filename = convert<string>(argv[1]);
@@ -53,16 +66,22 @@ int main(int argc, char* argv[])
 
 
 	ifstream reader;
+	ofstream writer;
 	bitset<8> lineSizeBuffer;
 	int lineSize = 0, line = 0;
 	reader.open(filename, ios::binary);
+	writer.open(filename + ".txt");
 	while (reader.read((char*)&lineSizeBuffer, sizeof(lineSizeBuffer))) {
 		line++;
 		lineSize = 0;
 		if (lineSizeBuffer.to_ulong() == 255) {
 			lineSize += lineSizeBuffer.to_ulong();
-			reader.read((char*)&lineSizeBuffer, sizeof(lineSizeBuffer));
-			lineSize += lineSizeBuffer.to_ulong();
+			int readLine;
+			do {
+				reader.read((char*)&lineSizeBuffer, sizeof(lineSizeBuffer));
+				readLine = lineSizeBuffer.to_ulong();
+				lineSize += readLine;
+			} while (readLine == 255);
 		}
 		else {
 			lineSize += lineSizeBuffer.to_ulong();
@@ -71,9 +90,9 @@ int main(int argc, char* argv[])
 		for (int j = 0; j < lineSize; j++) {
 			int blockType, blockSize;
 			readBlockInfo(reader, blockSize, blockType);
-			double double_;
+			double double_, noAbsoluteDouble, absoluteDouble;
 			int int_;
-			float float_;
+			float float_, noAbsoluteFloat, absoluteFloat;
 			cout << "\n\tBLOCK SIZE: " << blockSize << (blockType == 1 ? " TYPE INT [ " : blockType == 2 ? " TYPE FLOAT [ " : " TYPE DOUBLE [ ");
 			for (int i = 0; i < blockSize; i++) {
 				switch (blockType)
@@ -81,151 +100,31 @@ int main(int argc, char* argv[])
 				case 3:
 					reader.read((char*)&double_, sizeof(double_));
 					cout << double_ << " ";
+					noAbsoluteDouble = round(double_ * t2) / t2;
+					absoluteDouble = round(double_ * t1) / t1;
+					double_ = absoluteDouble + (noAbsoluteDouble - absoluteDouble);
+					writer << double_ << " ";
 					break;
 				case 2:
 					reader.read((char*)&float_, sizeof(float_));
 					cout << float_ << " ";
+					cout << round(float_ * t2) / t2 << " ";
+					noAbsoluteFloat = round(float_ * t2) / t2;
+					absoluteFloat = round(float_ * t1) / t1;
+					float_ = absoluteFloat + (noAbsoluteFloat - absoluteFloat);
+					writer << float_ << " ";
 					break;
 				default:
 					reader.read((char*)&int_, sizeof(int_));
 					cout << int_ << " ";
+					writer << int_ << " ";
 					break;
 				}
 			}
 			cout << "]";
 		}
 		cout << endl;
+		writer << endl;
 	}
-
+	writer.close();
 }
-
-/*
-//записывает кол-во блоков в записи
-void writeLineSize(ofstream& writer, int data) {
-	bitset<8> lineSize(data);
-	writer.write((char*)&lineSize, sizeof(lineSize));
-}
-
-//записывает информацию о блоке
-void writeBlockInfo(ofstream& writer, int size, int type) {
-	bitset<4> blockSizeBits(size);
-	bitset<4> blockTypeBits(type);
-}
-
-void writeNum(ofstream& writer, string number, int type) {
-	int int_;
-	double double_;
-	float float_;
-	switch (type)
-	{
-	case 3:
-		double_ = convert<float>(number);
-		writer.write((char*)&double_, sizeof(double_));
-		break;
-	case 2:
-		float_ = convert<float>(number);
-		writer.write((char*)&float_, sizeof(float_));
-		break;
-	default:
-		int_ = convert<int>(number);
-		writer.write((char*)&int_, sizeof(int_));
-		break;
-	}
-}
-int main(int argc, char* argv[])
-{
-	if (argc != 2) {
-		cout << "Error: wrong arguments!";
-		return 0;
-	}
-
-	string filename = argv[1];
-	string line;
-	ifstream reader(filename);
-
-	if (!reader.is_open()) {
-
-		cout << "Error: File not found or file open!";
-		return 0;
-	}
-	DynamicArray<DynamicArray<BlockElement>> unformatedArray;
-	while (!reader.eof()) {
-		getline(reader, line);
-		stringstream temp;
-		string num;
-		temp << line;
-		DynamicArray<BlockElement> tempArray;
-		while (temp >> num) {
-			int type = getType(num);
-			BlockElement element;
-			element.setElement(num);
-			element.setType(type);
-
-			tempArray.add(element);
-		}
-		unformatedArray.add(tempArray);
-	}
-	reader.close();
-
-	DynamicArray<DynamicArray<DynamicArray<BlockElement>>> formatedArray;
-	for (int i = 0; i < unformatedArray.getSize();	i++) {
-		int countBlocks = 0;
-		int last_type = 0;
-		DynamicArray<DynamicArray<BlockElement>> line;
-		DynamicArray<BlockElement> block;
-		for (int k = 0; k < unformatedArray.get(i).getSize(); k ++) {
-			int type = unformatedArray.get(i).get(k).type;
-			BlockElement element;
-			element.setElement(unformatedArray.get(i).get(k).element);
-			element.setType(type);
-			if (k + 1 ==  unformatedArray.get(i).getSize()) {
-				if (last_type == type) {
-					block.add(element);
-					line.add(block);
-					break;
-				}
-				else {
-					line.add(block);
-					DynamicArray<BlockElement> new_;
-					block = new_;
-					block.add(element);
-					line.add(block);
-					break;
-				}
-			}
-			if (last_type == type) {
-				block.add(element);
-			}
-			else {
-				line.add(block);
-				DynamicArray<BlockElement> new_;
-				block = new_;
-				block.add(element);
-			}
-
-			last_type = type;
-		}
-		formatedArray.add(line);
-	}
-
-	ofstream writer(filename + ".bin", ios::binary);
-	for (int l = 0; l < formatedArray.getSize(); l++) {
-		cout << "Line: "<< l + 1 << "  BLOCKS: " << formatedArray.get(l).getSize()-1 << " ";
-		writeLineSize(writer, formatedArray.get(l).getSize() - 1);
-		for (int f = 0; f < formatedArray.get(l).getSize(); f++) {
-
-			for (int k = 0; k < formatedArray.get(l).get(f).getSize(); k++) {
-				if (k == 0) {
-					cout << "{ B SIZE:" << formatedArray.get(l).get(f).getSize() << (formatedArray.get(l).get(f).get(k).type == 1 ? " TYPE INT [ " : formatedArray.get(l).get(f).get(k).type == 2 ? " TYPE FLOAT [ " : " TYPE DOUBLE [ ");
-					writeBlockInfo(writer, formatedArray.get(l).get(f).getSize(), formatedArray.get(l).get(f).get(k).type);
-				}
-				writeNum(writer, formatedArray.get(l).get(f).get(k).element, formatedArray.get(l).get(f).get(k).type);
-				cout << formatedArray.get(l).get(f).get(k).element << " ";
-			}
-			if (f != 0) cout << "] ";
-		}
-		cout << endl;
-	}
-}
-
-*/
