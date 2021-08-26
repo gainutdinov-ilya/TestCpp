@@ -380,7 +380,7 @@ int main(int argc, char* argv[])
 		getline(reader, line);
 		writeLine(writer ,splitLine(line));
 	}
-
+	writer.close();
 	/*
 	cout << "Reading file..";
 	string line;
