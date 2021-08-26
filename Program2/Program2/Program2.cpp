@@ -243,7 +243,7 @@ int fileType(string filename) {
 	}
 }
 
-void splitLine(DynamicArray<BlockElement> &out,string line, int &OK) {
+DynamicArray<DynamicArray<BlockElement>> splitLine(string line) {
 	stringstream temp;
 	temp << line;
 	string num;
@@ -253,8 +253,65 @@ void splitLine(DynamicArray<BlockElement> &out,string line, int &OK) {
 		BlockElement element(num, type);
 		tempArray.add(element);
 	}
-	out = tempArray;
-	OK += 1;
+	int countBlocks = 0;
+	int last_type = 0;
+	DynamicArray<DynamicArray<BlockElement>> answer;
+	DynamicArray<BlockElement> block;
+	for (int k = 0; k < tempArray.getSize(); k++) {
+		int type = tempArray.get(k).type;
+		BlockElement element;
+		element.setElement(tempArray.get(k).element);
+		element.setType(type);
+		if (block.getSize() == 15) {
+			answer.add(block);
+			DynamicArray<BlockElement> new_;
+			block = new_;
+			block.add(element);
+		}
+		if (k + 1 == tempArray.getSize()) {
+			if (last_type == type) {
+				block.add(element);
+				answer.add(block);
+				break;
+			}
+			else {
+				answer.add(block);
+				DynamicArray<BlockElement> new_;
+				block = new_;
+				block.add(element);
+				answer.add(block);
+				break;
+			}
+		}
+		if (last_type == type) {
+			block.add(element);
+		}
+		else {
+			answer.add(block);
+			DynamicArray<BlockElement> new_;
+			block = new_;
+			block.add(element);
+		}
+
+		last_type = type;
+	}
+	tempArray.clear();
+
+	return answer;
+}
+
+void writeLine(ofstream &writer, DynamicArray<DynamicArray<BlockElement>> line) {
+	writeLineSize(writer, line.getSize() - 1);
+	for (int f = 0; f < line.getSize(); f++) {
+		for (int k = 0; k < line.get(f).getSize(); k++) {
+			if (k == 0) {
+				int blockSize = line.get(f).getSize();
+				int blockType = line.get(f).get(k).type;
+				writeBlockInfo(writer, blockSize, blockType);
+			}
+			writeNum(writer, line.get(f).get(k).element, line.get(f).get(k).type);
+		}
+	}
 }
 
 int main(int argc, char* argv[])
@@ -316,7 +373,15 @@ int main(int argc, char* argv[])
 		cout << "Error: File not found or file open!";
 		return 0;
 	}
+	cout << "Converting file..";
+	ofstream writer(filename + ".bin", ios::binary);
+	while (!reader.eof()) {
+		string line;
+		getline(reader, line);
+		writeLine(writer ,splitLine(line));
+	}
 
+	/*
 	cout << "Reading file..";
 	string line;
 	DynamicArray<string> fileText;
@@ -388,16 +453,17 @@ int main(int argc, char* argv[])
 				block = new_;
 				block.add(element);
 			}
+
 			last_type = type;
 		}
 		formatedArray.add(line);
 		unformatedArray.get(i).clear();
 	}
 	unformatedArray.clear();
-	
+
 	cout << "OK" << endl << "Writing file..";
 
-	ofstream writer(filename + ".bin", ios::binary);
+	
 	for (int l = 0; l < formatedArray.getSize(); l++) {
 		writeLineSize(writer, formatedArray.get(l).getSize() - 1);
 		for (int f = 0; f < formatedArray.get(l).getSize(); f++) {
@@ -412,6 +478,7 @@ int main(int argc, char* argv[])
 		}
 	}
 	writer.close();
+	*/
 	cout << "OK" << endl;
 	if (compressLevel != -1) {
 		cout << "Compressing..";
